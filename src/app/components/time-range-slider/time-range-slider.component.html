@@ -1,0 +1,17 @@
+<!--<div class="ui-slider ui-widget ui-widget-content ui-corner-all ui-slider-horizontal" style="width: 14em;">
+  <span class="ui-slider-range ui-widget-header ui-corner-all ng-star-inserted" style="left: 0%; width: 100%;"></span>
+  <span class="ui-slider-handle ui-state-default ui-corner-all ui-clickable ng-star-inserted" style="left: 0%; bottom: auto;"></span>
+  <span class="ui-slider-handle ui-state-default ui-corner-all ui-clickable ng-star-inserted ui-slider-handle-active" style="left: 100%; bottom: auto;"></span>
+</div>-->
+
+<div class="slider-container">
+  <div class="slider-bar">
+    <span #hilightBar class="slider-hilight-bar" [style.width.px]="hilightWidth" [style.left.px]="pointerLeftPosition"></span>
+    <span #clickBar class="slider-click-bar" (mousedown)="mouseDownOnClickBar($event)" (mouseup)="mouseUpOnClickBar($event)" >
+      <span #pointerLeft class="slider-left-drag-pointer" (mousedown)="mouseDownOnLeftPointer($event)" (mouseup)="mouseUpOnLeftPointer($event)" [style.left.px]="pointerLeftPosition" [style.z-index]="pointerleftIndex"></span>
+      <span #pointerRight class="slider-right-drag-pointer" (mousedown)="mouseDownOnRightPointer($event)" (mouseup)="mouseUpOnRightPointer($event)" [style.left.px]="pointerRightPosition" [style.z-index]="pointerRightIndex"></span>
+      <span #tooltipLeft class="tool-tip" [style.left.px]="pointerLeftPosition - toolTipPosXAdj" [style.z-index]="pointerleftIndex" ><span class="arrow" ></span>{{leftToolTip}}</span>
+      <span #tooltipRight class="tool-tip" [style.left.px]="pointerRightPosition - toolTipPosXAdj" [style.z-index]="pointerRightIndex" ><span class="arrow"></span>{{rightToolTip}}</span>
+    </span>
+  </div>
+</div>
