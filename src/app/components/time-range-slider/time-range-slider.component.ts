@@ -6,10 +6,12 @@ import { Component, OnInit, ViewChild, ElementRef, HostListener, Input, Output, 
   styleUrls: ['./time-range-slider.component.scss']
 })
 export class TimeRangeSliderComponent implements OnInit {
+  @Input('startTime') startTime: string = "00:00";
+  @Input('endTime') endTime: string = "22:00";
   @Input('width') sliderContainerWidth: number = 500;
-  @Input('range') range: Array<number> = [0, 100];
   @Input('periodInMinute') periodInMinute: number = 15;
   @Input('timeRange') timeRange: Array<number> = null;
+  @Input('timeFormat') timeFormat: number = 12;
   @Output('onChange') onChange: EventEmitter<any> = new EventEmitter();
   @Output('onChangeSync') onChangeSync: EventEmitter<any> = new EventEmitter();
 
@@ -19,7 +21,7 @@ export class TimeRangeSliderComponent implements OnInit {
   @ViewChild('pointerRight') pointerRight: ElementRef;
 
   @HostListener('document:mousemove', ['$event']) onMouseMove(event) {
-    this.movePointer(event);
+    this.movePointerByMouseMove(event);
   }
 
   @HostListener('document:mouseup', ['$event']) onMouseUp(event) {
@@ -29,6 +31,8 @@ export class TimeRangeSliderComponent implements OnInit {
     this.mouseClickedOnLeftPointer = false;
     this.mouseClickedOnRightPointer = false;
   }
+
+  range: Array<number> = [0, 100];
 
   hilightWidth: number = 0;
   pointerLeftPosition: number = 0;
@@ -55,21 +59,44 @@ export class TimeRangeSliderComponent implements OnInit {
   constructor() { }
 
   ngOnChanges() {
-    //console.log(this.range);
     this.maximumWidth = this.clickBar.nativeElement.offsetWidth - this.pointerLeft.nativeElement.offsetWidth;
     this.pointerLeftPosition = this.getPositionByRange(this.range[0]);
     this.pointerRightPosition = this.getPositionByRange(this.range[1]);
     this.hilightWidth = this.pointerRightPosition - this.pointerLeftPosition;
-    //console.log(this.pointerLeftPosition, this.pointerRightPosition);
+    this.leftToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[0]), this.timeFormat));
+    this.rightToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[1]), this.timeFormat));
+    let positionX = this.getPositionByTime(this.startTime);
+    this.movePointer(positionX, 'left');
+    positionX = this.getPositionByTime(this.endTime);
+    this.movePointer(positionX, 'right');
+    this.hilightWidth = this.pointerRightPosition - this.pointerLeftPosition;
+  }
 
-    if (this.timeRange) {
-      this.selectedTimeRange[0] = this.getTimeByRange(this.range[0]);
-      this.selectedTimeRange[1] = this.getTimeByRange(this.range[1]);
-      this.leftToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[0])));
-      this.rightToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[1])));
-    } else {
-      this.leftToolTip = String(this.range[0]);
-      this.rightToolTip = String(this.range[1]);
+  getRangeByTime(time) {
+    let periodInMinute = this.periodInMinute;
+    let totalPeriodCounts = this.timeRange[1] * 4 + 1;
+    let ratio = totalPeriodCounts / 100;
+    for (let i = 0; i < totalPeriodCounts; i++) {
+      let hour = i * periodInMinute / 60;
+      let getTimeInDigital = this.convertTimeRangeToDigitalClock(hour, 24);
+      //console.log(getTimeInDigital);
+      if (time === getTimeInDigital) {
+        //console.log(time, i, i * ratio);
+        return i * ratio;
+      }
+    }
+  }
+
+  getPositionByTime(time) {
+    for (let i = 0; i < this.maximumWidth; i++) {
+      let selectedTime = this.getTimeByPosition(i);
+      let getTimeInDigital = String(this.convertTimeRangeToDigitalClock(selectedTime, 24));
+      //console.log(getTimeInDigital);
+      if (time === getTimeInDigital) {
+        return i;
+      }else if(i===this.maximumWidth-1){
+        console.error('unable to find the time =>', time);
+      }
     }
   }
 
@@ -77,17 +104,26 @@ export class TimeRangeSliderComponent implements OnInit {
 
   }
 
-  movePointer(event) {
+  movePointerByMouseMove(event) {
+    var positionX = 0;
     if (this.mouseClickedOnRightPointer || this.mouseClickedOnLeftPointer) {
       this.clientCoordinates = this.getClientCoordinatesFromEvent(event);
-      var elementClientRect = this.clickBar.nativeElement.getBoundingClientRect();
-      var positionXDifference = this.clientCoordinates.clientX - elementClientRect.left;
-      var positionX = positionXDifference - this.positionXDifference;
+      let elementClientRect = this.clickBar.nativeElement.getBoundingClientRect();
+      let positionXDifference = this.clientCoordinates.clientX - elementClientRect.left;
+      positionX = positionXDifference - this.positionXDifference;
       (positionX <= 0) ? positionX = 0 : '';
       (positionX >= this.maximumWidth) ? positionX = this.maximumWidth : '';
       //console.log(elementClientRect.left, this.clientCoordinates.clientX, positionXDifference);
     }
-    if (this.mouseClickedOnLeftPointer) {
+    this.movePointer(positionX);
+  }
+
+  getPositionByDigitalTime() {
+
+  }
+
+  movePointer(positionX:any, whichPoint?:string) {
+    if (this.mouseClickedOnLeftPointer || whichPoint === 'left') {
       if (positionX >= this.pointerRightPosition) {
         positionX = this.pointerRightPosition;
       }
@@ -95,9 +131,9 @@ export class TimeRangeSliderComponent implements OnInit {
       this.range[0] = this.getRangeByPosition(this.pointerLeftPosition);
       this.range[1] = this.getRangeByPosition(this.pointerRightPosition);
       let selectedTime = this.getTimeByPosition(positionX);
-      this.leftToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime));
-      this.onChangeSync.emit({ range: this.range, selectedTimeRange: this.selectedTimeRange });
-    } else if (this.mouseClickedOnRightPointer) {
+      this.leftToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime, this.timeFormat));
+      this.onChangeSync.emit({ range: this.range, selectedTimeRange: this.selectedTimeRange, selectedTime: [this.leftToolTip, this.rightToolTip] });
+    } else if (this.mouseClickedOnRightPointer  || whichPoint === 'right') {
       if (positionX <= this.pointerLeftPosition) {
         positionX = this.pointerLeftPosition;
       }
@@ -105,20 +141,13 @@ export class TimeRangeSliderComponent implements OnInit {
       this.range[0] = this.getRangeByPosition(this.pointerLeftPosition);
       this.range[1] = this.getRangeByPosition(this.pointerRightPosition);
       let selectedTime = this.getTimeByPosition(positionX);
-      this.rightToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime));
+      this.rightToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime, this.timeFormat));
       this.onChangeSync.emit({ range: this.range, selectedTimeRange: this.selectedTimeRange, selectedTime: [this.leftToolTip, this.rightToolTip] });
     }
     if (this.mouseClickedOnRightPointer || this.mouseClickedOnLeftPointer) {
       this.hilightWidth = this.pointerRightPosition - this.pointerLeftPosition;
-      if (this.timeRange) {
-        this.selectedTimeRange[0] = this.getTimeByRange(this.range[0]);
-        this.selectedTimeRange[1] = this.getTimeByRange(this.range[1]);
-        //this.leftToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[0])));
-        //this.rightToolTip = String(this.convertTimeRangeToDigitalClock(this.getTimeByRange(this.range[1])));
-      } else {
-        //this.leftToolTip = String(this.range[0]);
-        //this.rightToolTip = String(this.range[1]);
-      }
+      this.selectedTimeRange[0] = this.getTimeByRange(this.range[0]);
+      this.selectedTimeRange[1] = this.getTimeByRange(this.range[1]);
     }
   }
 
@@ -145,7 +174,7 @@ export class TimeRangeSliderComponent implements OnInit {
         this.pointerleftIndex = 1;
         let selectedTime = this.getTimeByPosition(positionX);
         this.hilightWidth = this.pointerRightPosition - this.pointerLeftPosition;
-        this.leftToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime));
+        this.leftToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime, this.timeFormat));
       } else if (positionX > this.pointerRightPosition || clickPointBetweenPointers > (Math.round(this.pointerRightPosition - this.pointerLeftPosition)) / 2) {
         if (positionX >= this.maximumWidth) {
           this.pointerRightPosition = this.maximumWidth;
@@ -156,7 +185,7 @@ export class TimeRangeSliderComponent implements OnInit {
         this.pointerRightIndex = 1;
         let selectedTime = this.getTimeByPosition(positionX);
         this.hilightWidth = this.pointerRightPosition - this.pointerLeftPosition;
-        this.rightToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime));
+        this.rightToolTip = String(this.convertTimeRangeToDigitalClock(selectedTime, this.timeFormat));
       } else {
         console.error(this.pointerLeftPosition, this.pointerRightPosition, clickPointBetweenPointers, positionX);
       }
@@ -196,12 +225,12 @@ export class TimeRangeSliderComponent implements OnInit {
     //this.mouseClickedOnRightPointer = false;
   }
 
-  convertTimeRangeToDigitalClock(value: any) {
+  convertTimeRangeToDigitalClock(value: any, clockType?: number) {
     // return '00:00';
-    return this.timeConvert(value);
+    return this.timeConvert(value, clockType);
   }
 
-  timeConvert(num) {
+  timeConvert(num: any, clockType?: number) {
     var decimalTimeString = num;
     var decimalTime = parseFloat(decimalTimeString);
     //console.log("parseFloat", decimalTime);
@@ -222,7 +251,13 @@ export class TimeRangeSliderComponent implements OnInit {
     }
     //console.log("hi there", "" + hours + ":" + minutes + ":" + seconds);
     //var digitalTimeString: string = hours + ":" + minutes + ":" + seconds;
-    let digitalTimeString: string = this.setAmPm(hours, minutes);
+    let digitalTimeString: string;
+    if (clockType && clockType === 24) {
+      digitalTimeString = hours + ":" + minutes;
+    } else {
+      digitalTimeString = this.setAmPm(hours, minutes);
+    }
+
     return digitalTimeString;
   }
 

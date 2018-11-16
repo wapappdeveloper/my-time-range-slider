@@ -1,1 +1,1 @@
-<app-time-range-slider [periodInMinute]="15" [range]="[0,100]" [timeRange]="[0,24]"(onChange)="onChange($event)" (onChangeSync)="onChangeSync($event)"></app-time-range-slider>
+<app-time-range-slider [startTime]="'10:00'" [endTime]="'10:15'" [periodInMinute]="15" [timeRange]="[0,24]" [timeFormat]="24" (onChange)="onChange($event)" (onChangeSync)="onChangeSync($event)"></app-time-range-slider>
